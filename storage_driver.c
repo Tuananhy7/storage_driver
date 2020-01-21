@@ -15,12 +15,16 @@ MODULE_AUTHOR("ANHHT38");
 MODULE_LICENSE("GPL");
 MODULE_VERSION("0.2");
 
+//#define MAXSIZE 4*1024*1024
+#define MAXSIZE 1024
+
 static struct class *class_name;
 static struct device *device_name;
 static dev_t dev;
 static struct cdev *my_cdev;
 char *kernel_buf;
-size_t len_buf_kernel;
+int file_size;
+int file_pos;
 
 static int dev_open(struct inode *, struct file *);
 static int dev_close(struct inode *, struct file *);
@@ -37,6 +41,7 @@ static struct file_operations fops = {
 static int dev_open(struct inode *inodep, struct file *filep)
 {
 	printk("open\n");
+	file_pos = 0;
 	return 0;
 }
 static int dev_close(struct inode *inodep, struct file *filep)
@@ -45,40 +50,54 @@ static int dev_close(struct inode *inodep, struct file *filep)
 	return 0;
 }
 
-static ssize_t dev_read(struct file*filep, char __user *buf, size_t len, loff_t *offset)
+static ssize_t dev_read(struct file *filep, char __user *buf, size_t len, loff_t *offset)
 {
-	len = len_buf_kernel;
-    if (copy_to_user(buf, kernel_buf, len) == 0)
-    {
-        printk("read %d byte \n", (int)len);
-    }
-	return 0;
+	int read_len = 0;
+	if ((len + file_pos) > file_size)
+	{
+		read_len = file_size - file_pos;
+		if (read_len < 0)
+			read_len = 0;
+	} else {
+		read_len = len;
+	}
+	if (copy_to_user(buf, &kernel_buf[file_pos], read_len) == 0)
+	{
+		printk("read %d byte \n", (int)read_len);
+	}
+	file_pos += read_len;
+	*offset = file_pos;
+
+	return read_len;
 }
-static ssize_t dev_write(struct file*filep, const char __user *buf, size_t len, loff_t *offset)
+static ssize_t dev_write(struct file *filep, const char __user *buf, size_t len, loff_t *offset)
 {
-    len_buf_kernel = len;
-	
-    
+	int write_len = 0;
+	if ((len + file_pos) > MAXSIZE)
+	{
+		write_len = MAXSIZE - file_pos;
+	} else {
+		write_len = len;
+	}
+	if (copy_from_user(&kernel_buf[file_pos], buf, write_len) == 0)
+	{
+		printk("write %d byte \n", (int)write_len);
+	}
+	file_pos = file_pos + write_len;
+	file_size = file_pos;
+	*offset = file_pos;
 
-    if((int)len > 1000)
-    {
-        len = 1000;
-    }
-    kernel_buf = kmalloc(len, GFP_USER);
-    memset(kernel_buf, 0, len);
-
-    if (copy_from_user(kernel_buf, buf, len) == 0)
-    {
-        printk("write %d byte \n", (int)len);
-    }
-    *offset = len;
-	return len;
+	return write_len;
 }
 
 static int __init exam_init(void)
 {
 	int ret;
 
+	kernel_buf = kmalloc(MAXSIZE, GFP_USER);
+	memset(kernel_buf, 0, MAXSIZE);
+	file_pos = 0;
+	file_size = 0;
 	ret = alloc_chrdev_region(&dev, 0, 1, "example");
 	if (ret)
 	{

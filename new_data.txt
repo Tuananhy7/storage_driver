@@ -1,0 +1,23 @@
+hoang tuan anh
+- Viết 1 driver cho phép lưu trữ tối đa 100MB dưới kernel.
+- User có thể fwrite hoặc dùng câu lệnh 'echo' để store data xuống driver.
+- User có thể sử dụng fread hoặc câu lệnh cat để đọc data dưới kernel
+- Cách test:
+	+ Step 1: cat /data/my_data > /dev/my_dev
+	+ Step 2: cat /dev/my_dev > /data/new_data
+	+ Step 3: compare my_data và new_data phải giống nhau.
+	+ Step 4: Viết 1 chương trình C sử dụng fwrite và fread để ghi cả 1 file xuống và đọc lên phải giống nhau.
+
+
++ breakout requirement
+	- tạo ra khung chương trình storage_driver
+		+ read
+		+ write
+		+ thao tác với dự liệu trong 1 file my_data
+		+ device_file : storage_dev
+	- swap dữ liệu theo step 1 -> step 2
+	- viết APP đọc ghi device_file.
+		+ dữ liệu dạng string - text
+		+ test với dữ liệu 1 file
+	- xử lí dung lượng dữ liệu
+		+ các hàm xử lý liên quan đến dung dượng file dưới kernel.
